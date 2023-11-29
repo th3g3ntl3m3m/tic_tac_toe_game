@@ -10,6 +10,8 @@
 #include <mutex>
 #include <future>
 
+#include "LRUCache.h"
+
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
@@ -18,10 +20,12 @@ bool USE_CACHE;
 size_t MAX_CACHE_SIZE;
 bool USE_LRU_CACHE;
 
+// LRUCache<std::string, int> cache(MAX_CACHE_SIZE);
+
 std::map<std::string, int> memo;
 std::list<std::string> cacheKeys;
 
-struct LRUCache {
+/*struct LRUCache {
     std::list<std::string> keys;
     std::unordered_map<std::string, std::pair<int, std::list<std::string>::iterator>> map;
 
@@ -48,7 +52,7 @@ struct LRUCache {
     }
 };
 
-LRUCache cache;
+LRUCache cache;*/
 std::mutex cacheMutex;
 
 std::vector<std::vector<char>> createBoard(int size) {
@@ -123,18 +127,23 @@ std::string boardToString(const std::vector<std::vector<char>>& board) {
 int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int alpha, int beta) {
     std::string boardKey = boardToString(board) + (isMax ? "1" : "0") + std::to_string(depth);
 
-    if (USE_CACHE) {
-        std::lock_guard<std::mutex> lock(cacheMutex);
-        if (USE_LRU_CACHE) {
-            int cachedValue;
-            if (cache.get(boardKey, cachedValue)) {
-                return cachedValue;
-            }
-        }
-        else {
-            if (memo.find(boardKey) != memo.end()) return memo[boardKey];
-        }
+    int cachedValue;
+    if (cache.get(boardKey, cachedValue)) {
+        return cachedValue;
     }
+
+    // if (USE_CACHE) {
+    //     std::lock_guard<std::mutex> lock(cacheMutex);
+    //     if (USE_LRU_CACHE) {
+    //         int cachedValue;
+    //         if (cache.get(boardKey, cachedValue)) {
+    //             return cachedValue;
+    //         }
+    //     }
+    //     else {
+    //         if (memo.find(boardKey) != memo.end()) return memo[boardKey];
+    //     }
+    // }
 
     if (depth >= MAX_DEPTH) return 0;
     if (isWinner(board, O)) return +10 - depth;
@@ -158,21 +167,23 @@ int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int al
         }
     }
 
-    if (USE_CACHE) {
-        std::lock_guard<std::mutex> lock(cacheMutex);
-        if (USE_LRU_CACHE) {
-            cache.put(boardKey, best);
-        }
-        else {
-            if (memo.size() >= MAX_CACHE_SIZE) {
-                memo.erase(cacheKeys.front());
-                cacheKeys.pop_front();
-            }
+    // if (USE_CACHE) {
+    //     std::lock_guard<std::mutex> lock(cacheMutex);
+    //     if (USE_LRU_CACHE) {
+    //         cache.put(boardKey, best);
+    //     }
+    //     else {
+    //         if (memo.size() >= MAX_CACHE_SIZE) {
+    //             memo.erase(cacheKeys.front());
+    //             cacheKeys.pop_front();
+    //         }
 
-            memo[boardKey] = best;
-            cacheKeys.push_back(boardKey);
-        }
-    }
+    //         memo[boardKey] = best;
+    //         cacheKeys.push_back(boardKey);
+    //     }
+    // }
+
+    cache.put(boardKey, best);
 
     return best;
 }
