@@ -98,11 +98,10 @@ int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int al
     std::string boardKey = boardToString(board) + (isMax ? "1" : "0") + std::to_string(depth);
 
     if (USE_CACHE) {
-        std::lock_guard<std::mutex> lock(cacheMutex);
         if (USE_LRU_CACHE) {
-            int cachedValue;
-            if (cache.get(boardKey, cachedValue)) {
-                return cachedValue;
+            auto cachedValue = cache.get(boardKey);
+            if(cachedValue.has_value()) {
+                return cachedValue.value();
             }
         }
         else {
@@ -133,7 +132,6 @@ int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int al
     }
 
     if (USE_CACHE) {
-        std::lock_guard<std::mutex> lock(cacheMutex);
         if (USE_LRU_CACHE) {
             cache.put(boardKey, best);
         }
