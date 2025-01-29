@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <future>
+#include <optional>
 
 const char X = 'X';
 const char O = 'O';
@@ -21,35 +22,98 @@ bool USE_LRU_CACHE;
 std::map<std::string, int> memo;
 std::list<std::string> cacheKeys;
 
-struct LRUCache {
-    std::list<std::string> keys;
-    std::unordered_map<std::string, std::pair<int, std::list<std::string>::iterator>> map;
+class LRUCache {
+public:
+    explicit LRUCache(size_t maxEntries = 1024) : maxCacheSize(maxEntries) {}
+
+    LRUCache(const LRUCache&) = delete;
+    LRUCache(LRUCache&&) = delete;
+    LRUCache& operator=(const LRUCache&) = delete;
+    LRUCache& operator=(LRUCache&&) = delete;
 
     void put(const std::string& key, int value) {
-        if (map.find(key) != map.end()) {
-            keys.erase(map[key].second);
-        } else if (keys.size() >= MAX_CACHE_SIZE) {
-            map.erase(keys.back());
+        std::scoped_lock lock(mtx);
+        auto it = map.find(key);
+
+        if (it != map.end()) {
+            keys.erase(it->second.second);
+        } else if (keys.size() >= maxCacheSize) {
+            auto last = keys.back();
             keys.pop_back();
+            map.erase(last);
         }
-        keys.push_front(key);
-        map[key] = {value, keys.begin()};
+
+        keys.emplace_front(key);
+        map[keys.front()] = {value, keys.begin()};
     }
 
-    bool get(const std::string& key, int& value) {
-        if (map.find(key) == map.end()) {
-            return false;
-        }
-        keys.erase(map[key].second);
+    std::optional<int> get(const std::string& key) {
+        std::scoped_lock lock(mtx);
+        auto it = map.find(key);
+        if (it == map.end()) return std::nullopt;
+
+        keys.erase(it->second.second);
         keys.push_front(key);
-        map[key].second = keys.begin();
-        value = map[key].first;
+        it->second.second = keys.begin();
+
+        return it->second.first;
+    }
+
+    bool contains(const std::string& key) const {
+        std::scoped_lock lock(mtx);
+        return map.find(key) != map.end();
+    }
+
+    bool erase(const std::string& key) {
+        std::scoped_lock lock(mtx);
+        auto it = map.find(key);
+        if (it == map.end()) return false;
+
+        keys.erase(it->second.second);
+        map.erase(it);
         return true;
     }
+
+    std::vector<std::string> get_all_keys() const {
+        std::scoped_lock lock(mtx);
+        return {keys.begin(), keys.end()};
+    }
+
+    std::optional<std::string> get_lru_key() const {
+        std::scoped_lock lock(mtx);
+        if (keys.empty()) return std::nullopt;
+        return keys.back();
+    }
+
+    size_t size() const {
+        std::scoped_lock lock(mtx);
+        return keys.size();
+    }
+
+    void resize(size_t newMaxEntries) {
+        std::scoped_lock lock(mtx);
+        maxCacheSize = newMaxEntries;
+        while (keys.size() > maxCacheSize) {
+            auto last = keys.back();
+            keys.pop_back();
+            map.erase(last);
+        }
+    }
+
+    void clear() {
+        std::scoped_lock lock(mtx);
+        map.clear();
+        keys.clear();
+    }
+
+private:
+    mutable std::mutex mtx;
+    std::list<std::string> keys;
+    std::unordered_map<std::string_view, std::pair<int, std::list<std::string>::iterator>> map;
+    size_t maxCacheSize;
 };
 
 LRUCache cache;
-std::mutex cacheMutex;
 
 std::vector<std::vector<char>> createBoard(int size) {
     return std::vector<std::vector<char>>(size, std::vector<char>(size, EMPTY));
