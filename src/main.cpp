@@ -65,6 +65,35 @@ private:
     std::vector<std::vector<char>> grid;
 };
 
+namespace GameRules {
+    bool isWinner(const Board& board, char player) {
+        int size = board.getSize();
+        bool diagonalWin = true, reverseDiagonalWin = true;
+        for (int i = 0; i < size; i++) {
+            if (board.getCell(i, i) != player) {
+                diagonalWin = false;
+            }
+            if (board.getCell(i, size - i - 1) != player) {
+                reverseDiagonalWin = false;
+            }
+
+            bool rowWin = true, colWin = true;
+            for (int j = 0; j < size; j++) {
+                if (board.getCell(i, j) != player) {
+                    rowWin = false;
+                }
+                if (board.getCell(j, i) != player) {
+                    colWin = false;
+                }
+            }
+            if (rowWin || colWin) {
+                return true;
+            }
+        }
+        return diagonalWin || reverseDiagonalWin;
+    }
+}
+
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
