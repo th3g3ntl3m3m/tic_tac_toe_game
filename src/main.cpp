@@ -3,9 +3,67 @@
 #include <climits>
 #include <string>
 #include <thread>
+#include <limits>
+#include <memory>
 #include <future>
+#include <tuple>
+#include <algorithm>
 #include <optional>
+
 #include "LRUCache.hpp"
+
+//==================
+// Model
+//==================
+
+class Board {
+public:
+    Board(int size) : grid(size, std::vector<char>(size, '.')) {}
+    
+    int getSize() const { 
+        return static_cast<int>(grid.size()); 
+    }
+
+    char getCell(int row, int col) const { 
+        return grid[row][col]; 
+    }
+
+    void setCell(int row, int col, char value) { 
+        grid[row][col] = value; 
+    }
+
+    bool isFull() const {
+        for(const auto& row : grid) {
+            for(const auto& cell : row) {
+                if(cell == '.') {
+                    return false;
+                }
+            }
+        }           
+        return true;
+    }
+
+    std::string toString() const {
+        std::string res;
+        for (const auto& row : grid) {
+            for(const auto& cell : row) {
+                res.push_back(cell);
+            }
+        }
+        return res;
+    }
+
+    void print() const {
+        for(const auto& row : grid) {
+            for(char cell : row) {
+                std::cout << cell << std::endl;
+            }
+            std::cout << "\n";
+        }
+    }
+private:
+    std::vector<std::vector<char>> grid;
+};
 
 const char X = 'X';
 const char O = 'O';
