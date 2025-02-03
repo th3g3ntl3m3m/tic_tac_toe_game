@@ -210,6 +210,24 @@ public:
     virtual char getSymbol() const = 0;
 };
 
+//==================
+// View
+//==================
+
+class IView {
+public:
+    virtual ~IView() = default;
+    virtual void displayBoard(const Board& board) = 0;
+};
+
+class ConsoleView : public IView {
+public:
+    void displayBoard(const Board& board) override {
+        board.print();
+    }
+    // todo add methods for displaying messages, receiving input
+};
+
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
