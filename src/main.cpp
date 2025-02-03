@@ -299,6 +299,49 @@ private:
     char symbol;
 };
 
+//==================
+// Controller
+//==================
+
+class GameController {
+public:
+    GameController(std::unique_ptr<IPlayer> player1,
+                   std::unique_ptr<IPlayer> player2,
+                   std::unique_ptr<IView> view,
+                   int boardSize)
+        : player1(std::move(player1)),
+          player2(std::move(player2)),
+          view(std::move(view)),
+          board(boardSize) {}
+
+    void runGameLoop() {
+        bool gameOver = false;
+        IPlayer* currentPlayer = player1.get();
+        while (!gameOver) {
+            view->displayBoard(board);
+            std::cout << "Player " << currentPlayer->getSymbol() << "'s turn.\n";
+            currentPlayer->makeMove(board);
+
+            if (GameRules::isWinner(board, currentPlayer->getSymbol())) {
+                view->displayBoard(board);
+                std::cout << "Player " << currentPlayer->getSymbol() << " wins!\n";
+                gameOver = true;
+            } else if (board.isFull()) {
+                view->displayBoard(board);
+                std::cout << "Draw!\n";
+                gameOver = true;
+            }
+            currentPlayer = (currentPlayer == player1.get()) ? player2.get() : player1.get();
+        }
+    }
+
+private:
+    std::unique_ptr<IPlayer> player1;
+    std::unique_ptr<IPlayer> player2;
+    std::unique_ptr<IView> view;
+    Board board;
+};
+
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
