@@ -7,11 +7,13 @@
 #include <string_view>
 #include <vector>
 
+#include "ICache.hpp"
+
 namespace SKW_WPX {
     
     namespace Cache {
 
-        class LRUCache {
+        class LRUCache : public ICache {
         public:
             explicit LRUCache(size_t maxEntries = 1024) : maxCacheSize(maxEntries) {}
 
@@ -20,7 +22,7 @@ namespace SKW_WPX {
             LRUCache& operator=(const LRUCache&) = delete;
             LRUCache& operator=(LRUCache&&) = delete;
 
-            void put(const std::string& key, int value) {
+            void put(const std::string& key, int value) override {
                 std::scoped_lock lock(mtx);
                 auto it = map.find(key);
 
@@ -36,7 +38,7 @@ namespace SKW_WPX {
                 map[keys.front()] = {value, keys.begin()};
             }
 
-            std::optional<int> get(const std::string& key) {
+            std::optional<int> get(const std::string& key) override {
                 std::scoped_lock lock(mtx);
                 auto it = map.find(key);
                 if (it == map.end()) return std::nullopt;
