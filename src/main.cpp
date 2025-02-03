@@ -11,6 +11,7 @@
 #include <optional>
 
 #include "LRUCache.hpp"
+#include "ICache.hpp"
 
 //==================
 // Model
@@ -93,6 +94,110 @@ namespace GameRules {
         return diagonalWin || reverseDiagonalWin;
     }
 }
+
+//==================
+// Engine
+//==================
+
+template <typename MoveType>
+class IEngine {
+public:
+    virtual ~IEngine() = default;
+    
+    virtual MoveType getBestMove(Board& board) = 0;
+};
+
+class AIEngine : public IEngine<std::tuple<int,int>> {
+public:
+    AIEngine(int maxDepth, std::unique_ptr<SKW_WPX::Cache::ICache> cachePtr)
+        : MAX_DEPTH(maxDepth), cache(std::move(cachePtr)) {}
+    
+    int minimax(Board& board, int depth, bool isMax, int alpha, int beta) {
+        std::string boardKey = board.toString() + (isMax ? "1" : "0") + std::to_string(depth);
+        
+        if (cache) {
+            std::optional<int> cachedValue = cache->get(boardKey);
+            if (cachedValue.has_value())
+                return cachedValue.value();
+        }
+
+        if (depth >= MAX_DEPTH) {
+            return 0;
+        }
+        if (GameRules::isWinner(board, 'O')) {
+            return 10 - depth;
+        }
+        if (GameRules::isWinner(board, 'X')) {
+            return -10 + depth;
+        }
+        if (board.isFull()) {
+            return 0;
+        }
+
+        int best = isMax ? std::numeric_limits<int>::min() : std::numeric_limits<int>::max();
+        int size = board.getSize();
+
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                if (board.getCell(i, j) == '.') {
+                    board.setCell(i, j, isMax ? 'O' : 'X');
+                    int value = minimax(board, depth + 1, !isMax, alpha, beta);
+                    board.setCell(i, j, '.');
+                    if (isMax) {
+                        best = std::max(best, value);
+                        alpha = std::max(alpha, best);
+                    } else {
+                        best = std::min(best, value);
+                        beta = std::min(beta, best);
+                    }
+                    if (beta <= alpha)
+                        break;
+                }
+            }
+        }
+
+        if (cache) {
+            cache->put(boardKey, best);
+        }
+        return best;          
+    }
+
+    std::tuple<int, int> getBestMove(Board& board) override {
+        int size = board.getSize();
+        int globalBestVal = std::numeric_limits<int>::min();
+        int bestRow = -1, bestCol = -1;
+        std::vector<std::future<std::tuple<int, int, int>>> futures;
+
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                if (board.getCell(i, j) == '.') {
+                    futures.emplace_back(std::async(std::launch::async, [this, &board, i, j]() {
+                        Board newBoard = board;
+                        newBoard.setCell(i, j, 'O');
+                        int moveVal = minimax(newBoard, 0, false,
+                                              std::numeric_limits<int>::min(),
+                                              std::numeric_limits<int>::max());
+                        return std::make_tuple(moveVal, i, j);
+                    }));
+                }
+            }
+        }
+
+        for (auto& f : futures) {
+            auto [moveVal, row, col] = f.get();
+            if (moveVal > globalBestVal) {
+                globalBestVal = moveVal;
+                bestRow = row;
+                bestCol = col;
+            }
+        }
+        return std::make_tuple(bestRow, bestCol);
+    }
+
+private:
+    int MAX_DEPTH;
+    std::unique_ptr<SKW_WPX::Cache::ICache> cache;
+};
 
 const char X = 'X';
 const char O = 'O';
