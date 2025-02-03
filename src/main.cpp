@@ -228,6 +228,77 @@ public:
     // todo add methods for displaying messages, receiving input
 };
 
+//==================
+// Players
+//==================
+
+class HumanPlayer : public IPlayer {
+public:
+    HumanPlayer(char symbol, IView* view) : symbol(symbol), view(view) {}
+
+    void makeMove(Board& board) override {
+        int x, y;
+        while (true) {
+            std::cout << "Enter the coordinates of your move (row and column): ";
+            std::cin >> x >> y;
+            x--; y--;
+            if (x >= 0 && x < board.getSize() && y >= 0 && y < board.getSize() && board.getCell(x, y) == '.') {
+                board.setCell(x, y, symbol);
+                break;
+            }
+            std::cout << "Invalid move. Try again.\n";
+        }
+    }
+
+    char getSymbol() const override {
+        return symbol;
+    }
+
+private:
+    char symbol;
+    IView* view;
+};
+
+class BotPlayer : public IPlayer {
+public:
+    BotPlayer(char symbol, int difficulty, bool useCache)
+        : symbol(symbol), engine(difficulty, useCache) {}
+
+    void makeMove(Board& board) override {
+        std::cout << "Bot is thinking...\n";
+        auto [row, col] = engine.getBestMove(board);
+        if (row != -1 && col != -1) {
+            board.setCell(row, col, symbol);
+        }
+    }
+
+    char getSymbol() const override {
+        return symbol;
+    }
+
+private:
+    char symbol;
+    AIEngine engine;
+};
+
+class RemotePlayer : public IPlayer {
+public:
+    RemotePlayer(char symbol) : symbol(symbol) {}
+    void makeMove(Board& board) override {
+        // todo logic for getting a move through the network
+        std::cout << "Remote move received (stub).\n";
+        int x, y;
+        std::cout << "Enter remote move coordinates (row and column): ";
+        std::cin >> x >> y;
+        board.setCell(x - 1, y - 1, symbol);
+    }
+    char getSymbol() const override {
+        return symbol;
+    }
+private:
+    char symbol;
+};
+
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
