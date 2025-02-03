@@ -199,6 +199,17 @@ private:
     std::unique_ptr<SKW_WPX::Cache::ICache> cache;
 };
 
+//==================
+// IPlayer
+//==================
+
+class IPlayer {
+public:
+    virtual ~IPlayer() = default;
+    virtual void makeMove(Board& board) = 0;
+    virtual char getSymbol() const = 0;
+};
+
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
