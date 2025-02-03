@@ -1,13 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <climits>
-#include <map>
-#include <unordered_map>
 #include <string>
-#include <list>
-#include <algorithm>
 #include <thread>
-#include <mutex>
 #include <future>
 #include <optional>
 #include "LRUCache.hpp"
@@ -17,13 +12,8 @@ const char O = 'O';
 const char EMPTY = '.';
 
 int MAX_DEPTH;
-bool USE_CACHE;
-size_t MAX_CACHE_SIZE;
-bool USE_LRU_CACHE;
+bool USE_CACHE = false;
 
-std::map<std::string, int> memo;
-std::list<std::string> cacheKeys;
- 
 SKW_WPX::Cache::LRUCache cache;
 
 std::vector<std::vector<char>> createBoard(int size) {
@@ -74,14 +64,14 @@ void printBoard(const std::vector<std::vector<char>>& board) {
 void playerMove(std::vector<std::vector<char>>& board) {
     int x, y;
     while (true) {
-        std::cout << "Введите координаты хода (строка и столбец): ";
+        std::cout << "Enter the coordinates of the move (row and column): ";
         std::cin >> x >> y;
         x--; y--;
         if (x >= 0 && x < board.size() && y >= 0 && y < board.size() && board[x][y] == EMPTY) {
             board[x][y] = X;
             break;
         }
-        std::cout << "Неверный ход. Попробуйте снова.\n";
+        std::cout << "Wrong move. Try again.\n";
     }
 }
 
@@ -99,14 +89,9 @@ int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int al
     std::string boardKey = boardToString(board) + (isMax ? "1" : "0") + std::to_string(depth);
 
     if (USE_CACHE) {
-        if (USE_LRU_CACHE) {
-            auto cachedValue = cache.get(boardKey);
-            if(cachedValue.has_value()) {
-                return cachedValue.value();
-            }
-        }
-        else {
-            if (memo.find(boardKey) != memo.end()) return memo[boardKey];
+        auto cachedValue = cache.get(boardKey);
+        if(cachedValue.has_value()) {
+            return cachedValue.value();
         }
     }
 
@@ -122,7 +107,7 @@ int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int al
         for (int j = 0; j < size; ++j) {
             if (board[i][j] == EMPTY) {
                 board[i][j] = isMax ? O : X;
-                int val = minimax(board, depth + 1, !isMax, alpha, beta); // todo нужна многопочка при сильной вложенности долго считает -> породить очередь из тасок на вычисление с ограничением числа потоков, писал это в MULT
+                int val = minimax(board, depth + 1, !isMax, alpha, beta);
                 board[i][j] = EMPTY;
                 best = isMax ? std::max(best, val) : std::min(best, val);
                 if (isMax) alpha = std::max(alpha, best);
@@ -133,18 +118,7 @@ int minimax(std::vector<std::vector<char>>& board, int depth, bool isMax, int al
     }
 
     if (USE_CACHE) {
-        if (USE_LRU_CACHE) {
-            cache.put(boardKey, best);
-        }
-        else {
-            if (memo.size() >= MAX_CACHE_SIZE) {
-                memo.erase(cacheKeys.front());
-                cacheKeys.pop_front();
-            }
-
-            memo[boardKey] = best;
-            cacheKeys.push_back(boardKey);
-        }
+        cache.put(boardKey, best);
     }
 
     return best;
@@ -186,29 +160,14 @@ void botMove(std::vector<std::vector<char>>& board) {
 
 int main() {
     int size;
-    std::cout << "Введите размер поля: ";
+    std::cout << "Enter the field size: ";
     std::cin >> size;
-    std::cout << "Введите сложность для бота (1 - 10): ";
+
+    USE_CACHE = (size > 5);
+
+    std::cout << "Enter the difficulty for the bot (1 - 10): ";
     std::cin >> MAX_DEPTH;
-
-    MAX_DEPTH = MAX_DEPTH > 10 ? 10 : MAX_DEPTH < 1 ? 1 : MAX_DEPTH;
-
-    char useCache;
-    std::cout << "Использовать кэш? (y/n): ";
-    std::cin >> useCache;
-    USE_CACHE = (useCache == 'y' || useCache == 'Y');
-
-    if (USE_CACHE) {
-        double sizeInMB;
-        std::cout << "Введите размер кэша в мегабайтах: ";
-        std::cin >> sizeInMB;
-        MAX_CACHE_SIZE = static_cast<size_t>((sizeInMB * 1024 * 1024) / 100);
-
-        char useLRUCache;
-        std::cout << "Использовать LRU кэш? (y/n): ";
-        std::cin >> useLRUCache;
-        USE_LRU_CACHE = (useLRUCache == 'y' || useLRUCache == 'Y');
-    }
+    MAX_DEPTH = (MAX_DEPTH > 10) ? 10 : (MAX_DEPTH < 1 ? 1 : MAX_DEPTH);
 
     std::vector<std::vector<char>> board = createBoard(size);
 
@@ -217,7 +176,7 @@ int main() {
         if (!isBoardFull(board)) {
             playerMove(board);
             if (isWinner(board, X)) {
-                std::cout << "Поздравляем! Вы выиграли!\n";
+                std::cout << "Congratulations! You've won!\n";
                 break;
             }
         }
@@ -225,13 +184,13 @@ int main() {
         if (!isBoardFull(board)) {
             botMove(board);
             if (isWinner(board, O)) {
-                std::cout << "Бот выиграл. Попробуйте снова!\n";
+                std::cout << "Bot won. Try again!\n";
                 break;
             }
         }
 
         if (isBoardFull(board)) {
-            std::cout << "Ничья!\n";
+            std::cout << "Draw!\n";
             break;
         }
     }
