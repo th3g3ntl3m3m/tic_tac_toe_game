@@ -15,6 +15,7 @@
 const char X = 'X';
 const char O = 'O';
 const char EMPTY = '.';
+
 int MAX_DEPTH;
 bool USE_CACHE;
 size_t MAX_CACHE_SIZE;
