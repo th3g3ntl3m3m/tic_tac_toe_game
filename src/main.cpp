@@ -261,12 +261,21 @@ private:
 
 class BotPlayer : public IPlayer {
 public:
-    BotPlayer(char symbol, int difficulty, bool useCache)
-        : symbol(symbol), engine(difficulty, useCache) {}
+    BotPlayer(char symbol, int difficulty, std::unique_ptr<SKW_WPX::Cache::ICache> cachePtr)
+        : symbol(symbol) { engine = std::make_unique<AIEngine>(difficulty, std::move(cachePtr)); }
+
+    BotPlayer(char symbol, int difficulty, bool useCache, size_t cacheSize = 1024) 
+        : symbol(symbol) 
+    { 
+        engine = std::make_unique<AIEngine>(
+            difficulty,
+            useCache ? std::make_unique<SKW_WPX::Cache::LRUCache>(cacheSize) : nullptr
+        );
+    }
 
     void makeMove(Board& board) override {
         std::cout << "Bot is thinking...\n";
-        auto [row, col] = engine.getBestMove(board);
+        auto [row, col] = engine->getBestMove(board);
         if (row != -1 && col != -1) {
             board.setCell(row, col, symbol);
         }
@@ -278,7 +287,7 @@ public:
 
 private:
     char symbol;
-    AIEngine engine;
+    std::unique_ptr<IEngine<std::tuple<int,int>>> engine;
 };
 
 class RemotePlayer : public IPlayer {
